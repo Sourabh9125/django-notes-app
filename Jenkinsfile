@@ -1,29 +1,65 @@
-@Library('Shared')_
+@Library('shared') _
 pipeline{
-    agent { label 'dev-server'}
-    
+    agent {label 'dev'};
     stages{
-        stage("Code clone"){
+        stage("workspace clean"){
             steps{
-                sh "whoami"
-            clone("https://github.com/LondheShubham153/django-notes-app.git","main")
+                script{
+                  clean_ws()
+                }
             }
         }
-        stage("Code Build"){
+        stage("code clone"){
             steps{
-            dockerbuild("notes-app","latest")
-            }
+                script{
+            clone("https://github.com/Sourabh9125/django-notes-app.git", "main")
+                }
         }
-        stage("Push to DockerHub"){
-            steps{
-                dockerpush("dockerHubCreds","notes-app","latest")
-            }
-        }
-        stage("Deploy"){
-            steps{
-                deploy()
-            }
-        }
-        
     }
+        
+        stage("trivy scan"){
+            steps{
+                script{
+                    trivy()
+                }
+            }
+        }
+        stage("docker build"){
+        steps{
+            script{
+            docker_build("django-app","latest") 
+            }
+        }
+    }
+        stage("testing"){
+        steps{
+            echo "testing the code"
+        }
+    }
+        stage("push to dockerHub"){
+        steps{
+            script{
+                docker_hub("dockerHubCreds", "django-app","latest")
+            }
+        }
+    }
+        stage("deploying "){
+        steps{
+            script{
+                docker_compose()
+            }
+        }
+    }
+ }
+
+ post{
+     failure{
+         script{
+             emailext from: "lodhisaurabh9125@gmail.com",
+             to: "lodhisourabh4678@gmail.com",
+             body: "pipeline failure check immeidatly",
+             subject: "pipeline status"
+         }
+     }
+ }   
 }
